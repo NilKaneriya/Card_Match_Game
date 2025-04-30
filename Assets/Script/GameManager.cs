@@ -1,6 +1,7 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 using DG.Tweening;
 using System.Linq;
 using TMPro;
@@ -10,19 +11,20 @@ public class GameManager : MonoBehaviour
     public static GameManager instance;
     private void Awake()
     {
-        instance = this;
-        
+        instance = this;        
     }
 
     public List<Card> flippedCards = new List<Card>();
-    public List<Sprite> finalSprite = new List<Sprite>();
     private bool checkingMatch = false;
 
     [SerializeField] TextMeshProUGUI scoreTxt;
     [SerializeField] TextMeshProUGUI turnTxt;
+    [SerializeField] GameObject gameWinPanel;
+    [SerializeField] Animator comboAnim;
+
     int tempscore = 0;
     int tempturn = 0;
-
+    int maxScore = 0;
     int score { 
         get { return tempscore; } 
         set { 
@@ -38,7 +40,7 @@ public class GameManager : MonoBehaviour
         } 
     }
 
-
+    int previousComboTurn = -1;
     public void OnCardFlipped(Card card)
     {
         flippedCards.Add(card);
@@ -48,20 +50,33 @@ public class GameManager : MonoBehaviour
         if (flippedCards.Count >= 2 && !checkingMatch)
         {
             bool allMatch = flippedCards.All(c => c.cardType == flippedCards[0].cardType);
+            
+
             if (allMatch)
             {
                 Debug.Log($"match found {flippedCards[0].name} and {flippedCards[1].name}");
-                flippedCards.ForEach(card => card.gameObject.SetActive(false));
+                if (previousComboTurn == turn) // combo 
+                {
+                    Debug.Log("Yey Combo!");
+                    comboAnim.Play("ComboAnimation");
+                }
                 DOVirtual.DelayedCall(0.3f, () =>
                 {
                     flippedCards.ForEach(card => card.gameObject.SetActive(false));
                     flippedCards.Clear();
                     score += 1;
                     turn += 1;
+                    previousComboTurn = turn;
+                    SoundManager.instance.PlaySFX(SoundClip.MatchSound);
+                    if (score == maxScore)
+                    {
+                        GameWin();
+                    }
                 });
             }
             else
             {
+                SoundManager.instance.PlaySFX(SoundClip.MatchMiss);
                 flippedCards.ForEach(card => card.HideCard());
                 DOVirtual.DelayedCall(0.5f, () =>
                 {
@@ -69,9 +84,7 @@ public class GameManager : MonoBehaviour
                     turn += 1;
                 });
             }
-            
         }
-
     }
 
     ///
@@ -88,22 +101,29 @@ public class GameManager : MonoBehaviour
     public RectTransform gridParent;
     public GameObject cardPrefab;
     public List<CardData> availableCards;
+    public List<GameObject> cardPrefabList;
 
     [Header("Grid Size")]
-    public int rows = 4;
-    public int columns = 4;
     public int spacing = 10;
 
-    private void Start()
+    public void InitGame(Vector2 grid)
     {
-        GenerateGrid();
+        gameWinPanel.SetActive(false);
+        GenerateGrid((int)grid.x, (int)grid.y);
         score = 0;
         turn = 0;
+        previousComboTurn = -1;
     }
 
-    
-    void GenerateGrid()
+    private void OnDisable()
     {
+        ClearGame();
+    }
+    void GenerateGrid(int rows, int columns)
+    {
+        bool isEvenPair = ((rows * columns) % 2 == 0);
+        maxScore = isEvenPair ? (rows * columns) / 2 : (((rows * columns) - 1 )/ 2);
+
         float panelWidth = gridParent.rect.width;
         float panelHeight = gridParent.rect.height;
 
@@ -136,21 +156,29 @@ public class GameManager : MonoBehaviour
         pool = Shuffle(pool);
 
         int cardIndex = 0;
+        
+        int centerIndex = isEvenPair ? -1 : (rows * columns) / 2;
         for (int row = 0; row < rows; row++)
         {
             for (int col = 0; col < columns; col++)
             {
                 int currentCell = row * columns + col;
-                if (totalCells % 2 != 0 && currentCell == totalCells - 1)
+                //if (totalCells % 2 != 0 && currentCell == totalCells - 1)
+                //{
+                //    // Leave last cell empty for odd grids
+                //    return;
+                //}
+                if(centerIndex == currentCell)
                 {
-                    // Leave last cell empty for odd grids
-                    return;
+                    // Leave center cell empty for odd grids
+                    Debug.Log($"{currentCell} : {centerIndex}");
+                    continue;
                 }
-
                 if (cardIndex >= pool.Count) return;
 
                 GameObject card = Instantiate(cardPrefab, gridParent); // Use gridParent
                 RectTransform cardRect = card.GetComponent<RectTransform>();
+                cardPrefabList.Add(card);
                 cardRect.sizeDelta = new Vector2(cellSize, cellSize);
 
                 Vector2 pos = new Vector2(
@@ -173,5 +201,23 @@ public class GameManager : MonoBehaviour
             (list[i], list[rnd]) = (list[rnd], list[i]);
         }
         return list;
+    }
+
+    void ClearGame()
+    {
+        flippedCards.Clear();
+        cardPrefabList.ForEach(card => Destroy(card));
+        cardPrefabList.Clear();
+    }
+
+    public void GameWin()
+    {
+        gameWinPanel.SetActive(true);
+    }
+
+    public void HomeBtnClick() // attach in UI btn
+    {
+        ClearGame();
+        HomeManager.instance.OpenHomePanel();
     }
 }

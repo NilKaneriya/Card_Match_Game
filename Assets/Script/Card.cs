@@ -54,8 +54,9 @@ public class Card : MonoBehaviour
         transform.DOScaleX(0f, 0.15f).OnComplete(() =>
         {
             img.sprite = flipSprite;
-            
+
             // Expand the card back to normal
+            SoundManager.instance.PlaySFX(SoundClip.FlipSound);
             transform.DOScaleX(1f, 0.15f).OnComplete(() =>
             {
                 isAnimate = false;
@@ -72,7 +73,7 @@ public class Card : MonoBehaviour
             transform.DOScaleX(0f, 0.15f).OnComplete(() =>
             {
                 img.sprite = hideSprite;
-
+                
                 transform.DOScaleX(1f, 0.15f).OnComplete(() =>
                 {
                     isAnimate = false;
