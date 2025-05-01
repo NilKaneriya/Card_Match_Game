@@ -33,9 +33,42 @@ public class Card : MonoBehaviour
         // for showing first 1s 
         img.sprite = sprite;
         isSeen = true;
-        Invoke(nameof(HideCard), 1f);
+        int revealTimeIndex = PlayerPrefs.GetInt("RevealTime", 0);
+        float delay = GetTime(revealTimeIndex);
+        Invoke(nameof(HideCard), delay);
     }
+    float GetTime(float val)
+    {
+        float time = 0f;
+        switch (val)
+        {
+            case 0:
+                time = 0;
+                break;
 
+            case 1:
+                time = 0.2f;
+                break;
+
+            case 2:
+                time = 0.4f;
+                break;
+
+            case 3:
+                time = 0.6f;
+                break;
+
+            case 4:
+                time = 0.8f;
+                break;
+
+            case 5:
+                time = 1f;
+                break;
+
+        }
+        return time;
+    }
 
     public void OpenAnimation()
     {

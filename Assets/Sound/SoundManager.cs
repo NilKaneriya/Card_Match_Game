@@ -50,7 +50,7 @@ public class SoundManager : MonoBehaviour
     }
     public void SetVolume(float volume)
     {
-        sfxSource.volume = 1;
+        sfxSource.volume = volume;
     }
 }
 public enum SoundClip

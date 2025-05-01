@@ -20,12 +20,21 @@ public class HomeManager : MonoBehaviour
     public Slider difficultySlider;
     public GameManager gameManager;
 
+    public Color[] bgColor;
+    public Camera cam;
+    public void BgColor(int color)
+    {
+        cam.backgroundColor = bgColor[color];
+    }
+
+
     private void OnEnable()
     {
         int volume = PlayerPrefs.GetInt("Sound", 1);
         SoundManager.instance.SetVolume(volume);
+        BgColor(PlayerPrefs.GetInt("BgColor", 0));
 
-        
+
         playGame.onClick.AddListener(() =>
         {
             HomePanel.SetActive(false);
