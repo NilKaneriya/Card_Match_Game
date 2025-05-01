@@ -11,7 +11,7 @@ public class GameManager : MonoBehaviour
     public static GameManager instance;
     private void Awake()
     {
-        instance = this;        
+        instance = this;
     }
 
     public List<Card> flippedCards = new List<Card>();
@@ -25,32 +25,36 @@ public class GameManager : MonoBehaviour
     int tempscore = 0;
     int tempturn = 0;
     int maxScore = 0;
-    int score { 
-        get { return tempscore; } 
-        set { 
+    int score
+    {
+        get { return tempscore; }
+        set
+        {
             tempscore = value;
             scoreTxt.text = $"Score : {value}";
-        } 
+        }
     }
-    int turn { 
-        get { return tempturn; } 
-        set { 
-            tempturn = value; 
-            turnTxt.text = $"Turn : {value}"; 
-        } 
+    int turn
+    {
+        get { return tempturn; }
+        set
+        {
+            tempturn = value;
+            turnTxt.text = $"Turn : {value}";
+        }
     }
 
     int previousComboTurn = -1;
     public void OnCardFlipped(Card card)
     {
         flippedCards.Add(card);
-        
+
 
         // If at least 2 cards are flipped, check match
         if (flippedCards.Count >= 2 && !checkingMatch)
         {
             bool allMatch = flippedCards.All(c => c.cardType == flippedCards[0].cardType);
-            
+
 
             if (allMatch)
             {
@@ -68,6 +72,7 @@ public class GameManager : MonoBehaviour
                     turn += 1;
                     previousComboTurn = turn;
                     SoundManager.instance.PlaySFX(SoundClip.MatchSound);
+                    Debug.Log($"{score} : {maxScore}");
                     if (score == maxScore)
                     {
                         GameWin();
@@ -113,6 +118,9 @@ public class GameManager : MonoBehaviour
         score = 0;
         turn = 0;
         previousComboTurn = -1;
+
+        currentRows = (int)grid.x;
+        currentCols = (int)grid.y;
     }
 
     private void OnDisable()
@@ -122,7 +130,7 @@ public class GameManager : MonoBehaviour
     void GenerateGrid(int rows, int columns)
     {
         bool isEvenPair = ((rows * columns) % 2 == 0);
-        maxScore = isEvenPair ? (rows * columns) / 2 : (((rows * columns) - 1 )/ 2);
+        maxScore = isEvenPair ? (rows * columns) / 2 : (((rows * columns) - 1) / 2);
 
         float panelWidth = gridParent.rect.width;
         float panelHeight = gridParent.rect.height;
@@ -133,9 +141,9 @@ public class GameManager : MonoBehaviour
         float availableWidth = panelWidth - totalSpacingX;
         float availableHeight = panelHeight - totalSpacingY;
 
-        float cellSize = Mathf.Min(availableWidth / columns, availableHeight / rows);
+        cellSize = Mathf.Min(availableWidth / columns, availableHeight / rows);
 
-        Vector2 startPosition = new Vector2(
+        startPosition = new Vector2(
             -((columns - 1) * (cellSize + spacing)) / 2f,
             ((rows - 1) * (cellSize + spacing)) / 2f
         );
@@ -156,7 +164,7 @@ public class GameManager : MonoBehaviour
         pool = Shuffle(pool);
 
         int cardIndex = 0;
-        
+
         int centerIndex = isEvenPair ? -1 : (rows * columns) / 2;
         for (int row = 0; row < rows; row++)
         {
@@ -168,10 +176,10 @@ public class GameManager : MonoBehaviour
                 //    // Leave last cell empty for odd grids
                 //    return;
                 //}
-                if(centerIndex == currentCell)
+                if (centerIndex == currentCell)
                 {
                     // Leave center cell empty for odd grids
-                    Debug.Log($"{currentCell} : {centerIndex}");
+                    
                     continue;
                 }
                 if (cardIndex >= pool.Count) return;
@@ -213,6 +221,7 @@ public class GameManager : MonoBehaviour
     public void GameWin()
     {
         gameWinPanel.SetActive(true);
+        SaveManager.DeleteSave();
     }
 
     public void HomeBtnClick() // attach in UI btn
@@ -220,4 +229,131 @@ public class GameManager : MonoBehaviour
         ClearGame();
         HomeManager.instance.OpenHomePanel();
     }
+
+
+    // save Game 
+    private int currentRows;
+    private int currentCols;
+    private float cellSize;
+    private Vector2 startPosition;
+    public void SaveCurrentGame()
+    {
+        SaveData data = new SaveData
+        {
+            score = tempscore,
+            maxScore = maxScore,
+            turn = tempturn,
+            rows = currentRows,
+            columns = currentCols,
+            cards = new List<SavedCard>()
+        };
+
+        foreach (GameObject obj in cardPrefabList)
+        {
+            if (obj == null) continue;
+
+            Card card = obj.GetComponent<Card>();
+            RectTransform rt = obj.GetComponent<RectTransform>();
+
+            int row = Mathf.RoundToInt((startPosition.y - rt.anchoredPosition.y) / (cellSize + spacing));
+            int col = Mathf.RoundToInt((rt.anchoredPosition.x - startPosition.x) / (cellSize + spacing));
+
+            data.cards.Add(new SavedCard
+            {
+                type = card.cardType,
+                isMatched = !obj.activeSelf,
+                row = row,
+                column = col
+            });
+        }
+
+        SaveManager.SaveGame(data);
+    }
+
+    public void LoadSavedGame(SaveData data)
+    {
+
+
+        // SaveData data = SaveManager.LoadGame();
+        // if (data == null)
+        // {
+        //     InitGame(new Vector2(4, 4)); // fallback
+        //     return;
+        // }
+
+        ClearGame();
+
+        score = data.score;
+        turn = data.turn;
+        maxScore = data.maxScore;
+        currentRows = data.rows;
+        currentCols = data.columns;
+        //maxScore = data.cards.Count(c => c.isMatched) / 2;
+
+        float panelWidth = gridParent.rect.width;
+        float panelHeight = gridParent.rect.height;
+        float totalSpacingX = spacing * (currentCols - 1);
+        float totalSpacingY = spacing * (currentRows - 1);
+
+        float availableWidth = panelWidth - totalSpacingX;
+        float availableHeight = panelHeight - totalSpacingY;
+
+        cellSize = Mathf.Min(availableWidth / currentCols, availableHeight / currentRows);
+
+        startPosition = new Vector2(
+            -((currentCols - 1) * (cellSize + spacing)) / 2f,
+            ((currentRows - 1) * (cellSize + spacing)) / 2f
+        );
+
+        foreach (var saved in data.cards)
+        {
+            GameObject obj = Instantiate(cardPrefab, gridParent);
+            cardPrefabList.Add(obj);
+
+            RectTransform rt = obj.GetComponent<RectTransform>();
+            rt.sizeDelta = new Vector2(cellSize, cellSize);
+            rt.anchoredPosition = new Vector2(
+                startPosition.x + saved.column * (cellSize + spacing),
+                startPosition.y - saved.row * (cellSize + spacing)
+            );
+
+            Card card = obj.GetComponent<Card>();
+            card.SetCard(saved.type, GetSpriteByType(saved.type));
+
+            if (saved.isMatched)
+                obj.SetActive(false);
+        }
+    }
+    public Sprite GetSpriteByType(CardType type)
+    {
+        return availableCards.FirstOrDefault(c => c.type == type).sprite;
+    }
+    // private void Start()
+    // {
+    //     LoadSavedGame();
+    // }
+    private void OnApplicationQuit()
+    {
+        SaveCurrentGame();
+    }
+}
+
+[System.Serializable]
+public class SavedCard
+{
+    public CardType type;
+    public bool isMatched;
+    public int row;
+    public int column;
+}
+
+[System.Serializable]
+public class SaveData
+{
+    public int score;
+    public int maxScore;
+    public int turn;
+    public int rows;
+    public int columns;
+    public List<SavedCard> cards;
 }

@@ -13,14 +13,19 @@ public class HomeManager : MonoBehaviour
 
     public GameObject HomePanel;
     public GameObject GamePanel;
+    public GameObject SettingPanel;
     public Button playGame;
-    public Button settingPanel;
+    public Button settingBtn;
     public Button HomeBtn;
     public Slider difficultySlider;
     public GameManager gameManager;
 
     private void OnEnable()
     {
+        int volume = PlayerPrefs.GetInt("Sound", 1);
+        SoundManager.instance.SetVolume(volume);
+
+        
         playGame.onClick.AddListener(() =>
         {
             HomePanel.SetActive(false);
@@ -28,19 +33,41 @@ public class HomeManager : MonoBehaviour
             gameManager.InitGame(gridValue((int)difficultySlider.value));
         });
 
-        settingPanel.onClick.AddListener(() =>
+        settingBtn.onClick.AddListener(() =>
         {
-
+            SettingPanel.SetActive(true);
         });
 
+        LoadGameIfExist();
     }
-
+    void LoadGameIfExist()
+    {
+        SaveData data = SaveManager.LoadGame();
+        if (data == null)
+        {
+            OpenHomePanel();
+        }
+        else
+        {
+            if (data.score == data.maxScore)
+            {
+                SaveManager.DeleteSave();
+                OpenHomePanel();
+                return;
+            }
+            HomePanel.SetActive(false);
+            GamePanel.SetActive(true);
+            gameManager.LoadSavedGame(data);
+        }
+    }
 
     public void OpenHomePanel()
     {
         HomePanel.SetActive(true);
         GamePanel.SetActive(false);
     }
+
+
     Vector2 gridValue(int index)
     {
         switch (index)
@@ -60,3 +87,4 @@ public class HomeManager : MonoBehaviour
         }
     }
 }
+

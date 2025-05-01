@@ -48,6 +48,10 @@ public class SoundManager : MonoBehaviour
     {
         sfxSource.volume = 1;
     }
+    public void SetVolume(float volume)
+    {
+        sfxSource.volume = 1;
+    }
 }
 public enum SoundClip
 {
